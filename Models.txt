@@ -1,0 +1,23 @@
+
+// user info
+name:string
+pin:number, len:5, encrypted
+mobileNumber: string
+email: string
+isApproved: boolean
+accountStatus: string, activate/block
+type: string, admin/user/agent
+balance: number
+
+// transaction details
+id: ObjectId
+reqPhone: string
+resPhone: string
+method: string, cashIn/cashOut/sendMoney
+amount: number
+fee: number
+isPending: boolean
+
+// pin check
+mobileNumber: number
+pin: number
