@@ -62,7 +62,7 @@ const registerUser = asyncHandler(async (req, res) => {
     balance: 0,
   });
 
-  // remove password and refresh token field from response
+  // remove pin and refresh token field from response
   const createdUser = await User.findById(user._id).select(
     "-pin -refreshToken"
   );
@@ -82,11 +82,11 @@ const loginUser = asyncHandler(async (req, res) => {
   // req body -> data
   // username or email
   //find the user
-  //password check
+  //pin check
   //access and referesh token
   //send cookie
 
-  const { email, username, password } = req.body;
+  const { email, username, pin } = req.body;
   console.log(email);
   console.log(req.body);
 
@@ -108,9 +108,9 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User does not exist");
   }
 
-  const isPasswordValid = await user.isPasswordCorrect(password);
+  const ispinValid = await user.ispinCorrect(pin);
 
-  if (!isPasswordValid) {
+  if (!ispinValid) {
     throw new ApiError(401, "Invalid user credentials");
   }
 
@@ -119,7 +119,7 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 
   const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken"
+    "-pin -refreshToken"
   );
 
   const options = {
@@ -217,28 +217,28 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-const changeCurrentPassword = asyncHandler(async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
+const changeCurrentPin = asyncHandler(async (req, res) => {
+  const { oldPin, newPin } = req.body;
 
   const user = await User.findById(req.user?._id);
-  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  const ispinCorrect = await user.ispinCorrect(oldPin);
 
-  if (!isPasswordCorrect) {
-    throw new ApiError(400, "Invalid old password");
+  if (!ispinCorrect) {
+    throw new ApiError(400, "Invalid old pin");
   }
 
-  user.password = newPassword;
+  user.pin = newPin;
   await user.save({ validateBeforeSave: false });
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Password changed successfully"));
+    .json(new ApiResponse(200, {}, "pin changed successfully"));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "User fetched successfully"));
+    .json(new ApiResponse(200, req.user, "User fetched successfully"));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -257,71 +257,11 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
       },
     },
     { new: true }
-  ).select("-password");
+  ).select("-pin");
 
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Account details updated successfully"));
-});
-
-const updateUserAvatar = asyncHandler(async (req, res) => {
-  const avatarLocalPath = req.file?.path;
-
-  if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is missing");
-  }
-
-  //TODO: delete old image - assignment
-
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-
-  if (!avatar.url) {
-    throw new ApiError(400, "Error while uploading on avatar");
-  }
-
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        avatar: avatar.url,
-      },
-    },
-    { new: true }
-  ).select("-password");
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "Avatar image updated successfully"));
-});
-
-const updateUserCoverImage = asyncHandler(async (req, res) => {
-  const coverImageLocalPath = req.file?.path;
-
-  if (!coverImageLocalPath) {
-    throw new ApiError(400, "Cover image file is missing");
-  }
-
-  //TODO: delete old image - assignment
-
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-
-  if (!coverImage.url) {
-    throw new ApiError(400, "Error while uploading on avatar");
-  }
-
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        coverImage: coverImage.url,
-      },
-    },
-    { new: true }
-  ).select("-password");
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "Cover image updated successfully"));
 });
 
 export {
@@ -329,9 +269,7 @@ export {
   loginUser,
   logoutUser,
   refreshAccessToken,
-  changeCurrentPassword,
+  changeCurrentPin,
   getCurrentUser,
   updateAccountDetails,
-  updateUserAvatar,
-  updateUserCoverImage,
 };
