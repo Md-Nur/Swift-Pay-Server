@@ -99,39 +99,37 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // req body -> data
-  // username or email
-  //find the user
-  //pin check
   //access and referesh token
   //send cookie
 
-  const { email, username, pin } = req.body;
-  console.log(email);
-  console.log(req.body);
+  // req body -> data
+  const { phoneEmail, pin } = req.body;
 
-  if (!username && !email) {
+  // check the fields is not empty
+  if (!phoneEmail && !email) {
     res.status(400).json(new ApiError(400, "username or email is required"));
   }
 
-  // Here is an alternative of above code based on logic discussed in video:
-  // if (!(username || email)) {
-  //     res.json(new ApiError(400, "username or email is required")
-
-  // }
-
+  //find the user
   const user = await User.findOne({
-    $or: [{ username }, { email }],
+    $or: [{ mobileNumber: phoneEmail }, { email: phoneEmail }],
   });
 
   if (!user) {
     res.status(404).json(new ApiError(404, "User does not exist"));
   }
 
-  const ispinValid = await user.ispinCorrect(pin);
-
-  if (!ispinValid) {
+  //pin check
+  const isPinValid = await user.isPinCorrect(pin);
+  if (!isPinValid) {
     res.status(401).json(new ApiError(401, "Invalid user credentials"));
+  }
+
+  // Check the user is approved or block
+  if (!user.isApproved || user.accountStatus === "Blocked") {
+    res
+      .status(401)
+      .json(new ApiError(401, "You are not approved / blocked by admin"));
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
@@ -245,9 +243,9 @@ const changeCurrentPin = asyncHandler(async (req, res) => {
   const { oldPin, newPin } = req.body;
 
   const user = await User.findById(req.user?._id);
-  const ispinCorrect = await user.ispinCorrect(oldPin);
+  const isPinCorrect = await user.isPinCorrect(oldPin);
 
-  if (!ispinCorrect) {
+  if (!isPinCorrect) {
     res.status(400).json(new ApiError(400, "Invalid old pin"));
   }
 
