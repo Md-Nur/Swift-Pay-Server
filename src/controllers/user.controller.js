@@ -99,7 +99,6 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  //access and referesh token
   //send cookie
 
   // req body -> data
@@ -132,6 +131,7 @@ const loginUser = asyncHandler(async (req, res) => {
       .json(new ApiError(401, "You are not approved / blocked by admin"));
   }
 
+  //access and referesh token
   const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
     user._id
   );
@@ -258,6 +258,7 @@ const changeCurrentPin = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
+
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, "User fetched successfully"));
