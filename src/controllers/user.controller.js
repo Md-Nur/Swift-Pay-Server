@@ -15,21 +15,27 @@ const generateAccessAndRefereshTokens = async (userId) => {
 
     return { accessToken, refreshToken };
   } catch (error) {
-    throw new ApiError(
-      500,
-      "Something went wrong while generating referesh and access token"
-    );
+    res
+      .status(500)
+      .json(
+        new ApiError(
+          500,
+          "Something went wrong while generating referesh and access token"
+        )
+      );
   }
 };
 
 const registerUser = asyncHandler(async (req, res) => {
+  console.log(process.env.CORS_ORIGIN);
+
   // get user details from frontend
   let { name, pin, mobileNumber, email, type } = req.body;
   // console.log("email: ", email);
 
   // validation - not empty fields
   if (pin < 10000 || pin > 99999) {
-    throw new ApiError(400, "Pin must be 5 digits");
+    res.status(400).json(new ApiError(400, "Pin must be 5 digits"));
   } else {
     pin = pin.toString();
   }
@@ -38,7 +44,7 @@ const registerUser = asyncHandler(async (req, res) => {
       (field) => field?.toString()?.trim() === ""
     )
   ) {
-    throw new ApiError(400, "All fields are required");
+    res.status(400).json(new ApiError(400, "All fields are required"));
   }
 
   // check if user already exists: mobile number, email
@@ -47,7 +53,11 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (existedUser) {
-    throw new ApiError(409, "User with email or phone Number already exists");
+    res
+      .status(409)
+      .json(
+        new ApiError(409, "User with email or phone Number already exists")
+      );
   }
 
   // create user object - create entry in db
@@ -69,13 +79,23 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // check for user creation
   if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
+    res
+      .status(500)
+      .json(
+        new ApiError(500, "Something went wrong while registering the user")
+      );
   }
 
   // return res
   return res
     .status(201)
-    .json(new ApiResponse(200, createdUser, "User registered Successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        createdUser,
+        "Success! You can use swift pay after approval"
+      )
+    );
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -91,12 +111,12 @@ const loginUser = asyncHandler(async (req, res) => {
   console.log(req.body);
 
   if (!username && !email) {
-    throw new ApiError(400, "username or email is required");
+    res.status(400).json(new ApiError(400, "username or email is required"));
   }
 
   // Here is an alternative of above code based on logic discussed in video:
   // if (!(username || email)) {
-  //     throw new ApiError(400, "username or email is required")
+  //     res.json(new ApiError(400, "username or email is required")
 
   // }
 
@@ -105,13 +125,13 @@ const loginUser = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    throw new ApiError(404, "User does not exist");
+    res.status(404).json(new ApiError(404, "User does not exist"));
   }
 
   const ispinValid = await user.ispinCorrect(pin);
 
   if (!ispinValid) {
-    throw new ApiError(401, "Invalid user credentials");
+    res.status(401).json(new ApiError(401, "Invalid user credentials"));
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
@@ -174,7 +194,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     req.cookies.refreshToken || req.body.refreshToken;
 
   if (!incomingRefreshToken) {
-    throw new ApiError(401, "unauthorized request");
+    res.status(401).json(new ApiError(401, "unauthorized request"));
   }
 
   try {
@@ -186,11 +206,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const user = await User.findById(decodedToken?._id);
 
     if (!user) {
-      throw new ApiError(401, "Invalid refresh token");
+      res.status(401).json(new ApiError(401, "Invalid refresh token"));
     }
 
     if (incomingRefreshToken !== user?.refreshToken) {
-      throw new ApiError(401, "Refresh token is expired or used");
+      res
+        .status(401)
+        .json(new ApiError(401, "Refresh token is expired or used"));
     }
 
     const options = {
@@ -213,7 +235,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid refresh token");
+    res
+      .status(401)
+      .json(new ApiError(401, error?.message || "Invalid refresh token"));
   }
 });
 
@@ -224,7 +248,7 @@ const changeCurrentPin = asyncHandler(async (req, res) => {
   const ispinCorrect = await user.ispinCorrect(oldPin);
 
   if (!ispinCorrect) {
-    throw new ApiError(400, "Invalid old pin");
+    res.status(400).json(new ApiError(400, "Invalid old pin"));
   }
 
   user.pin = newPin;
@@ -242,17 +266,17 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullName, email } = req.body;
+  const { name, email } = req.body;
 
-  if (!fullName || !email) {
-    throw new ApiError(400, "All fields are required");
+  if (!name || !email) {
+    res.status(400).json(new ApiError(400, "All fields are required"));
   }
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
-        fullName,
+        name,
         email: email,
       },
     },
