@@ -5,6 +5,6 @@ import { sendMoney } from "../controllers/transaction.controller.js";
 const router = Router();
 
 // Secure Routes
-router.route("/send-money").post(sendMoney);
+router.route("/send-money").post(verifyJWT, sendMoney);
 
-export default router
+export default router;
