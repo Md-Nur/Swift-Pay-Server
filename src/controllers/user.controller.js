@@ -27,7 +27,6 @@ const generateAccessAndRefereshTokens = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  console.log(process.env.CORS_ORIGIN);
 
   // get user details from frontend
   let { name, pin, mobileNumber, email, type } = req.body;
@@ -258,7 +257,6 @@ const changeCurrentPin = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, "User fetched successfully"));
