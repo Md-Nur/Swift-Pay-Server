@@ -21,3 +21,7 @@ isPending: boolean
 // pin check
 mobileNumber: number
 pin: number
+
+
+email: md.nurealame2004@gmail.com
+pin: 45685
