@@ -175,17 +175,19 @@ const cashOut = asyncHandler(async (req, res) => {
     res.status(500).json(new ApiError(500, "Transaction failed!!"));
   }
 
-  // decrease req user balance through the amount and fees respectively after approval
-  // try {
-  //   reqUser.balance = reqUser.balance - (amount + fee);
-  //   await reqUser.save();
-  // } catch (error) {
-  //   res
-  //     .status(500)
-  //     .json(
-  //       new ApiError(500, error.message || "Can't add money to the sender")
-  //     );
-  // }
+  // decrease req user balance through the amount and fees respectively
+  try {
+    reqUser.balance = reqUser.balance - (amount + fee);
+    resUser.balance = resUser.balance + amount + fee;
+    await resUser.save();
+    await reqUser.save();
+  } catch (error) {
+    res
+      .status(500)
+      .json(
+        new ApiError(500, error.message || "Can't add money to the sender")
+      );
+  }
 
   // send response
   res
