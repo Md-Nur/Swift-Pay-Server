@@ -336,4 +336,57 @@ const cashInApproval = asyncHandler(async (req, res) => {
     );
 });
 
-export { sendMoney, cashOut, cashIn, cashInApproval };
+// Get Transactions
+
+const getTransaction = asyncHandler(async (req, res) => {
+  let user = req.body;
+
+  if (!user || !user.mobileNumber || !user.type) {
+    user = req.user;
+    if (!user || !user.mobileNumber || !user.type) {
+      return res.status(404).json(new ApiError(404, "Account not found!"));
+    }
+  }
+  // console.log(user);
+  const { mobileNumber, type } = user;
+
+  let pipeline = [];
+
+  if (type !== "Admin") {
+    pipeline = [
+      {
+        $match: {
+          $or: [
+            {
+              reqPhone: mobileNumber,
+            },
+            {
+              resPhone: mobileNumber,
+            },
+          ],
+        },
+      },
+      {
+        $limit: type === "User" ? 10 : 20,
+      },
+    ];
+  }
+
+  const tranctions = await Transaction.aggregate(pipeline);
+
+  if (!tranctions) {
+    res.status(501).json(new ApiError(501, "Can't get the transactions!!"));
+  }
+
+  if (tranctions.length < 1) {
+    res.status(404).json(new ApiError(404, "You don't have any transactions"));
+  }
+
+  return res.status(200).send(new ApiResponse(200, tranctions));
+});
+
+export { sendMoney, cashOut, cashIn, cashInApproval, getTransaction };
+
+// OmegaofTs
+// APK free downloader
+// chat ingocnito bot
