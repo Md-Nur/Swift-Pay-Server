@@ -14,7 +14,7 @@ const sendMoney = asyncHandler(async (req, res) => {
       (field) => field.toString().trim() === ""
     )
   ) {
-    res.status(404).json(new ApiError(404, "Every field is required!"));
+    return res.status(404).json(new ApiError(404, "Every field is required!"));
   }
   amount = parseInt(amount);
 
@@ -29,13 +29,13 @@ const sendMoney = asyncHandler(async (req, res) => {
   const reqUser = await User.findOne({ mobileNumber: reqPhone });
 
   if (!reqUser) {
-    res.status(404).json(new ApiError(404, "You don't have any account"));
+    return res.status(404).json(new ApiError(404, "You don't have any account"));
   }
 
   const isPinValid = await reqUser.isPinCorrect(pin);
 
   if (!isPinValid) {
-    res.status(401).json(new ApiError(401, "Incorrect Pin!"));
+    return res.status(401).json(new ApiError(401, "Incorrect Pin!"));
   }
 
   const resUser = await User.findOne({ mobileNumber: resPhone });
@@ -53,9 +53,14 @@ const sendMoney = asyncHandler(async (req, res) => {
       .json(new ApiError(401, "Receiver is not approved / blocked by admin"));
   }
 
-  // check Sufficient Amount
+  if (reqUser.type !== resUser.type || resUser.type !== "User") {
+    return res
+      .status(420)
+      .json(new ApiError(420, "Send money only allow to a user!"));
+  }
   if (amount < 50) {
-    res.status(500).json(new ApiError(500, "You have to send minimun 50 taka"));
+    // check Sufficient Amount
+    return res.status(500).json(new ApiError(500, "You have to send minimun 50 taka"));
   }
 
   let fee = amount > 100 ? 5 : 0;
@@ -79,7 +84,7 @@ const sendMoney = asyncHandler(async (req, res) => {
   });
 
   if (!tranction) {
-    res.status(500).json(new ApiError(500, "Transaction failed!!"));
+    return res.status(500).json(new ApiError(500, "Transaction failed!!"));
   }
 
   // decrease and increate req user and res user balance through the amount and fees respectively
@@ -112,7 +117,7 @@ const cashOut = asyncHandler(async (req, res) => {
       (field) => field.toString().trim() === ""
     )
   ) {
-    res.status(404).json(new ApiError(404, "Every field is required!"));
+    return res.status(404).json(new ApiError(404, "Every field is required!"));
   }
   amount = parseInt(amount);
 
@@ -120,13 +125,13 @@ const cashOut = asyncHandler(async (req, res) => {
   const reqUser = await User.findOne({ mobileNumber: reqPhone });
 
   if (!reqUser) {
-    res.status(404).json(new ApiError(404, "You don't have any account"));
+    return res.status(404).json(new ApiError(404, "You don't have any account"));
   }
 
   const isPinValid = await reqUser.isPinCorrect(pin);
 
   if (!isPinValid) {
-    res.status(401).json(new ApiError(401, "Incorrect Pin!"));
+    return res.status(401).json(new ApiError(401, "Incorrect Pin!"));
   }
 
   const resUser = await User.findOne({ mobileNumber: resPhone });
@@ -172,7 +177,7 @@ const cashOut = asyncHandler(async (req, res) => {
   });
 
   if (!tranction) {
-    res.status(500).json(new ApiError(500, "Transaction failed!!"));
+    return res.status(500).json(new ApiError(500, "Transaction failed!!"));
   }
 
   // decrease req user balance through the amount and fees respectively
@@ -205,21 +210,23 @@ const cashIn = asyncHandler(async (req, res) => {
       (field) => field.toString().trim() === ""
     )
   ) {
-    res.status(404).json(new ApiError(404, "Every field is required!"));
+    return res.status(404).json(new ApiError(404, "Every field is required!"));
   }
   amount = parseInt(amount);
 
   // Find user
   const reqUser = await User.findOne({ mobileNumber: reqPhone });
 
-  if (!reqUser) {
-    res.status(404).json(new ApiError(404, "You don't have any account"));
+  if (!reqUser || reqUser?.type !== "User") {
+    res
+      .status(404)
+      .json(new ApiError(404, "You aren't allow to perform cash in"));
   }
 
   const isPinValid = await reqUser.isPinCorrect(pin);
 
   if (!isPinValid) {
-    res.status(401).json(new ApiError(401, "Incorrect Pin!"));
+    return res.status(401).json(new ApiError(401, "Incorrect Pin!"));
   }
 
   const resUser = await User.findOne({ mobileNumber: resPhone });
@@ -254,7 +261,7 @@ const cashIn = asyncHandler(async (req, res) => {
   });
 
   if (!tranction) {
-    res.status(500).json(new ApiError(500, "Transaction failed!!"));
+    return res.status(500).json(new ApiError(500, "Transaction failed!!"));
   }
 
   // send response
@@ -352,8 +359,19 @@ const getTransaction = asyncHandler(async (req, res) => {
 
   let pipeline = [];
 
+  if (type === "User") {
+    pipeline = [
+      {
+        $match: {
+          isPending: false,
+        },
+      },
+    ];
+  }
+
   if (type !== "Admin") {
     pipeline = [
+      ...pipeline,
       {
         $match: {
           $or: [
@@ -375,11 +393,11 @@ const getTransaction = asyncHandler(async (req, res) => {
   const tranctions = await Transaction.aggregate(pipeline);
 
   if (!tranctions) {
-    res.status(501).json(new ApiError(501, "Can't get the transactions!!"));
+    return res.status(501).json(new ApiError(501, "Can't get the transactions!!"));
   }
 
   if (tranctions.length < 1) {
-    res.status(404).json(new ApiError(404, "You don't have any transactions"));
+    return res.status(404).json(new ApiError(404, "You don't have any transactions"));
   }
 
   return res.status(200).send(new ApiResponse(200, tranctions));

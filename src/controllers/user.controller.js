@@ -27,14 +27,13 @@ const generateAccessAndRefereshTokens = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-
   // get user details from frontend
   let { name, pin, mobileNumber, email, type } = req.body;
   // console.log("email: ", email);
 
   // validation - not empty fields
   if (pin < 10000 || pin > 99999) {
-    res.status(400).json(new ApiError(400, "Pin must be 5 digits"));
+    return res.status(400).json(new ApiError(400, "Pin must be 5 digits"));
   } else {
     pin = pin.toString();
   }
@@ -43,7 +42,7 @@ const registerUser = asyncHandler(async (req, res) => {
       (field) => field?.toString()?.trim() === ""
     )
   ) {
-    res.status(400).json(new ApiError(400, "All fields are required"));
+    return res.status(400).json(new ApiError(400, "All fields are required"));
   }
 
   // check if user already exists: mobile number, email
@@ -105,7 +104,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
   // check the fields is not empty
   if (!phoneEmail && !email) {
-    res.status(400).json(new ApiError(400, "username or email is required"));
+    return res
+      .status(400)
+      .json(new ApiError(400, "username or email is required"));
   }
 
   //find the user
@@ -114,13 +115,13 @@ const loginUser = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    res.status(404).json(new ApiError(404, "User does not exist"));
+    return res.status(404).json(new ApiError(404, "User does not exist"));
   }
 
   //pin check
   const isPinValid = await user.isPinCorrect(pin);
   if (!isPinValid) {
-    res.status(401).json(new ApiError(401, "Invalid user credentials"));
+    return res.status(401).json(new ApiError(401, "Invalid user credentials"));
   }
 
   // Check the user is approved or block
@@ -191,7 +192,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     req.cookies.refreshToken || req.body.refreshToken;
 
   if (!incomingRefreshToken) {
-    res.status(401).json(new ApiError(401, "unauthorized request"));
+    return res.status(401).json(new ApiError(401, "unauthorized request"));
   }
 
   try {
@@ -203,7 +204,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const user = await User.findById(decodedToken?._id);
 
     if (!user) {
-      res.status(401).json(new ApiError(401, "Invalid refresh token"));
+      return res.status(401).json(new ApiError(401, "Invalid refresh token"));
     }
 
     if (incomingRefreshToken !== user?.refreshToken) {
@@ -245,7 +246,7 @@ const changeCurrentPin = asyncHandler(async (req, res) => {
   const isPinCorrect = await user.isPinCorrect(oldPin);
 
   if (!isPinCorrect) {
-    res.status(400).json(new ApiError(400, "Invalid old pin"));
+    return res.status(400).json(new ApiError(400, "Invalid old pin"));
   }
 
   user.pin = newPin;
@@ -266,7 +267,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   const { name, email } = req.body;
 
   if (!name || !email) {
-    res.status(400).json(new ApiError(400, "All fields are required"));
+    return res.status(400).json(new ApiError(400, "All fields are required"));
   }
 
   const user = await User.findByIdAndUpdate(

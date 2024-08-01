@@ -1,36 +1,41 @@
 import mongoose from "mongoose";
 
-const transactionSchema = new mongoose.Schema({
-  reqPhone: {
-    type: String,
-    required: true,
-    ref: "User",
-    trim: true,
+const transactionSchema = new mongoose.Schema(
+  {
+    reqPhone: {
+      type: String,
+      required: true,
+      ref: "User",
+      trim: true,
+    },
+    resPhone: {
+      type: String,
+      required: true,
+      ref: "User",
+      trim: true,
+    },
+    method: {
+      type: String,
+      enum: ["cashIn", "cashOut", "sendMoney"],
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    fee: {
+      type: Number,
+      required: true,
+    },
+    isPending: {
+      type: Boolean,
+      default: true,
+    },
   },
-  resPhone: {
-    type: String,
-    required: true,
-    ref: "User",
-    trim: true,
-  },
-  method: {
-    type: String,
-    enum: ["cashIn", "cashOut", "sendMoney"],
-    required: true,
-  },
-  amount: {
-    type: Number,
-    required: true,
-  },
-  fee: {
-    type: Number,
-    required: true,
-  },
-  isPending: {
-    type: Boolean,
-    default: true,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
 const Transaction = mongoose.model("Transaction", transactionSchema);
 
