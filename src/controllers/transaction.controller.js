@@ -29,7 +29,9 @@ const sendMoney = asyncHandler(async (req, res) => {
   const reqUser = await User.findOne({ mobileNumber: reqPhone });
 
   if (!reqUser) {
-    return res.status(404).json(new ApiError(404, "You don't have any account"));
+    return res
+      .status(404)
+      .json(new ApiError(404, "You don't have any account"));
   }
 
   const isPinValid = await reqUser.isPinCorrect(pin);
@@ -60,7 +62,9 @@ const sendMoney = asyncHandler(async (req, res) => {
   }
   if (amount < 50) {
     // check Sufficient Amount
-    return res.status(500).json(new ApiError(500, "You have to send minimun 50 taka"));
+    return res
+      .status(500)
+      .json(new ApiError(500, "You have to send minimun 50 taka"));
   }
 
   let fee = amount > 100 ? 5 : 0;
@@ -125,7 +129,9 @@ const cashOut = asyncHandler(async (req, res) => {
   const reqUser = await User.findOne({ mobileNumber: reqPhone });
 
   if (!reqUser) {
-    return res.status(404).json(new ApiError(404, "You don't have any account"));
+    return res
+      .status(404)
+      .json(new ApiError(404, "You don't have any account"));
   }
 
   const isPinValid = await reqUser.isPinCorrect(pin);
@@ -178,20 +184,6 @@ const cashOut = asyncHandler(async (req, res) => {
 
   if (!tranction) {
     return res.status(500).json(new ApiError(500, "Transaction failed!!"));
-  }
-
-  // decrease req user balance through the amount and fees respectively
-  try {
-    reqUser.balance = reqUser.balance - (amount + fee);
-    resUser.balance = resUser.balance + amount + fee;
-    await resUser.save();
-    await reqUser.save();
-  } catch (error) {
-    res
-      .status(500)
-      .json(
-        new ApiError(500, error.message || "Can't add money to the sender")
-      );
   }
 
   // send response
@@ -270,7 +262,7 @@ const cashIn = asyncHandler(async (req, res) => {
     .send(new ApiResponse(201, tranction, "Request for cash in successfully"));
 });
 
-const cashInApproval = asyncHandler(async (req, res) => {
+const transactionApproval = asyncHandler(async (req, res) => {
   // Get Data from frontedn
   const { tranctionId } = req.body;
   if (!tranctionId) {
@@ -292,16 +284,14 @@ const cashInApproval = asyncHandler(async (req, res) => {
   if (
     !reqUser ||
     !resUser ||
-    resUser.type !== "Agent" ||
     !reqUser.isApproved ||
     !resUser.isApproved ||
     reqUser.accountStatus === "Blocked" ||
-    resUser.accountStatus === "Blocked" ||
-    req.user.type !== "Agent"
+    resUser.accountStatus === "Blocked"
   ) {
     return res
       .status(404)
-      .json(new ApiError(404, "User not found/ approved / active"));
+      .json(new ApiError(404, "User not found/approved/active"));
   }
 
   if (
@@ -315,11 +305,15 @@ const cashInApproval = asyncHandler(async (req, res) => {
       );
   }
 
-  if (resUser.balance < transaction.amount) {
+  if (
+    (resUser.balance < transaction.amount && transaction.method === "cashIn") ||
+    (reqUser.balance < transaction.amount + transaction.fee &&
+      transaction.method === "cashOut")
+  ) {
     return res
       .status(500)
       .json(
-        new ApiError(500, "You don't have sufficient balance to transfer!")
+        new ApiError(500, "Insufficient balance to transfer!")
       );
   }
 
@@ -327,9 +321,16 @@ const cashInApproval = asyncHandler(async (req, res) => {
   try {
     transaction.isPending = false;
     await transaction.save();
-    reqUser.balance = reqUser.balance + transaction.amount;
+    if (transaction.method === "cashIn") {
+      reqUser.balance = reqUser.balance + transaction.amount;
+      resUser.balance = resUser.balance - transaction.amount;
+    } else if (transaction.method === "cashOut") {
+      reqUser.balance =
+        reqUser.balance - (transaction.amount + transaction.fee);
+      resUser.balance =
+        resUser.balance + (transaction.amount + transaction.fee);
+    }
     await reqUser.save();
-    resUser.balance = resUser.balance - transaction.amount;
     await resUser.save();
   } catch (error) {
     return res.status(500).json(new ApiError(500, error.message));
@@ -344,7 +345,6 @@ const cashInApproval = asyncHandler(async (req, res) => {
 });
 
 // Get Transactions
-
 const getTransaction = asyncHandler(async (req, res) => {
   let user = req.body;
 
@@ -357,10 +357,17 @@ const getTransaction = asyncHandler(async (req, res) => {
   // console.log(user);
   const { mobileNumber, type } = user;
 
-  let pipeline = [];
+  let pipeline = [
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ];
 
   if (type === "User") {
     pipeline = [
+      ...pipeline,
       {
         $match: {
           isPending: false,
@@ -393,18 +400,18 @@ const getTransaction = asyncHandler(async (req, res) => {
   const tranctions = await Transaction.aggregate(pipeline);
 
   if (!tranctions) {
-    return res.status(501).json(new ApiError(501, "Can't get the transactions!!"));
+    return res
+      .status(501)
+      .json(new ApiError(501, "Can't get the transactions!!"));
   }
 
   if (tranctions.length < 1) {
-    return res.status(404).json(new ApiError(404, "You don't have any transactions"));
+    return res
+      .status(404)
+      .json(new ApiError(404, "You don't have any transactions"));
   }
 
   return res.status(200).send(new ApiResponse(200, tranctions));
 });
 
-export { sendMoney, cashOut, cashIn, cashInApproval, getTransaction };
-
-// OmegaofTs
-// APK free downloader
-// chat ingocnito bot
+export { sendMoney, cashOut, cashIn, transactionApproval, getTransaction };
