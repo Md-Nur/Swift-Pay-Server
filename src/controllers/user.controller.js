@@ -51,7 +51,7 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (existedUser) {
-    res
+    return res
       .status(409)
       .json(
         new ApiError(409, "User with email or phone Number already exists")
@@ -239,6 +239,17 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
+const getAllUsers = asyncHandler(async (req, res) => {
+  if (req.user.type !== "Admin") {
+    return res.status(403).json(new ApiError(403, "Permission denied"));
+  }
+  const users = await User.find({}).select("-pin -refreshToken").sort("-_id");
+  console.log(users);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, users, "Users fetched successfully"));
+});
+
 const changeCurrentPin = asyncHandler(async (req, res) => {
   const { oldPin, newPin } = req.body;
 
@@ -294,4 +305,5 @@ export {
   changeCurrentPin,
   getCurrentUser,
   updateAccountDetails,
+  getAllUsers,
 };
