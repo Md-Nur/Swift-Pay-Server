@@ -250,6 +250,28 @@ const getAllUsers = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, users, "Users fetched successfully"));
 });
 
+const userApporval = asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+
+  if (!userId) {
+    return res.status(400).json(new ApiError(400, "All fields are required"));
+  }
+
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return res.status(404).json(new ApiError(404, "User not found"));
+  }
+  user.isApproved = true;
+  user.balance = user.type === "Agent" ? 10000 : 40;
+
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User approval status updated"));
+});
+
 const changeCurrentPin = asyncHandler(async (req, res) => {
   const { oldPin, newPin } = req.body;
 
@@ -306,4 +328,5 @@ export {
   getCurrentUser,
   updateAccountDetails,
   getAllUsers,
+  userApporval,
 };
