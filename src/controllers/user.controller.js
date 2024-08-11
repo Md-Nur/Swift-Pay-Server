@@ -12,7 +12,7 @@ const generateAccessAndRefereshTokens = async (userId) => {
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
-
+    // console.log("accessToken: ", accessToken);
     return { accessToken, refreshToken };
   } catch (error) {
     res
@@ -136,6 +136,12 @@ const loginUser = asyncHandler(async (req, res) => {
     user._id
   );
 
+  if (!accessToken || !refreshToken) {
+    return res
+      .status(500)
+      .json(new ApiError(500, "Something went wrong while generating tokens"));
+  }
+
   const loggedInUser = await User.findById(user._id).select(
     "-pin -refreshToken"
   );
@@ -143,6 +149,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: true,
+    sameSite: "none",
   };
 
   return res

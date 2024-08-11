@@ -1,6 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv/config.js";
 
 const userSchema = new Schema(
   {
@@ -65,7 +66,7 @@ userSchema.methods.isPinCorrect = async function (pin) {
 };
 
 userSchema.methods.generateAccessToken = function () {
-  return jwt.sign(
+  const token = jwt.sign(
     {
       _id: this._id,
     },
@@ -74,6 +75,8 @@ userSchema.methods.generateAccessToken = function () {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     }
   );
+  // console.log("token", token);
+  return token;
 };
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
